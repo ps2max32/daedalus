@@ -46,7 +46,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "SysPSP/Math/Math.h"
 #endif 
 
-#ifdef DAEDALUS_CTR
+#if defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)
 struct ScePspFMatrix4
 {
 	float m[16];
@@ -70,7 +70,7 @@ struct TempVerts
 
 	~TempVerts()
 	{
-#if defined(DAEDALUS_GL) || defined(DAEDALUS_CTR) || defined(DAEDALUS_GLES)
+#if defined(DAEDALUS_GL) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined(DAEDALUS_GLES)
 		free(Verts);
 #endif
 	}
@@ -81,7 +81,7 @@ struct TempVerts
 #ifdef DAEDALUS_PSP
 		Verts = static_cast<DaedalusVtx*>(sceGuGetMemory(bytes));
 #endif
-#if defined(DAEDALUS_GL) || defined(DAEDALUS_CTR) || defined(DAEDALUS_GLES)
+#if defined(DAEDALUS_GL) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined(DAEDALUS_GLES)
 		Verts = static_cast<DaedalusVtx*>(malloc(bytes));
 #endif
 
@@ -332,7 +332,7 @@ void BaseRenderer::InitViewport()
 	mN64ToScreenTranslate.x  = (f32)display_x - roundf(0.55f * (gZoomX - 1.0f) * fViWidth);
 	mN64ToScreenTranslate.y  = (f32)display_y - roundf(0.55f * (gZoomX - 1.0f) * fViHeight);
 
-#ifndef DAEDALUS_CTR
+#if !defined(DAEDALUS_CTR) && !defined(DAEDALUS_PS2)
 		if (gRumblePakActive)
 		{
 			mN64ToScreenTranslate.x += (FastRand() & 3);
@@ -342,7 +342,7 @@ void BaseRenderer::InitViewport()
 
 
 
-#if defined(DAEDALUS_GL) || defined(DAEDALUS_CTR) || defined(DAEDALUS_GLES)
+#if defined(DAEDALUS_GL) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined(DAEDALUS_GLES)
 	f32 w = mScreenWidth;
 	f32 h = mScreenHeight;
 
@@ -403,7 +403,7 @@ void BaseRenderer::UpdateViewport()
 
 	sceGuOffset(vx - (vp_w/2),vy - (vp_h/2));
 	sceGuViewport(vx + vp_x, vy + vp_y, vp_w, vp_h);
-#elif defined(DAEDALUS_GL) || defined(DAEDALUS_CTR) || defined(DAEDALUS_GLES)
+#elif defined(DAEDALUS_GL) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined(DAEDALUS_GLES)
 	glViewport(vp_x, (s32)mScreenHeight - (vp_h + vp_y), vp_w, vp_h);
 #ifdef DAEDALUS_ENABLE_ASSERTS
 #else
@@ -1561,7 +1561,7 @@ void BaseRenderer::UpdateTileSnapshots( u32 tile_idx )
 		// LOD is disabled - use two textures
 		UpdateTileSnapshot( 1, tile_idx + 1 );
 	}
-#elif defined(DAEDALUS_GL) || defined(RDP_USE_TEXEL1) || defined(DAEDALUS_CTR) || defined(DAEDALUS_GLES)
+#elif defined(DAEDALUS_GL) || defined(RDP_USE_TEXEL1) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined(DAEDALUS_GLES)
 // FIXME(strmnnrmn): What's RDP_USE_TEXEL1? Can we remove it?
 
 	if (gRDPOtherMode.cycle_type == CYCLE_2CYCLE)
@@ -1881,7 +1881,7 @@ void BaseRenderer::SetScissor( u32 x0, u32 y0, u32 x1, u32 y1 )
 
 #if defined(DAEDALUS_PSP)
 	sceGuScissor(l, y, w, h);
-#elif defined(DAEDALUS_GL) || defined(DAEDALUS_CTR) || defined(DAEDALUS_GLES) 
+#elif defined(DAEDALUS_GL) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined(DAEDALUS_GLES) 
 	// NB: OpenGL is x,y,w,h. Errors if width or height is negative, so clamp this.
 
 	glScissor( l, y, w, h );

@@ -54,14 +54,14 @@ static NativePf8888			gPaletteBuffer[ 256 ];
 // On other platforms (e.g. OSX) updating textures is relatively inexpensive, so
 // we just skip the hashing process entirely, and update textures every frame
 // regardless of whether they've actually changed.
-#if defined (DAEDALUS_PSP) || defined(DAEDALUS_CTR)
+#if defined (DAEDALUS_PSP) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2))
 static const bool kUpdateTexturesEveryFrame = false;
 #else
 static const bool kUpdateTexturesEveryFrame = true;
 #endif
 
 
-#if defined(DAEDALUS_GL) || defined(DAEDALUS_ACCURATE_TMEM) || defined(DAEDALUS_CTR) || defined(DAEDALUS_GLES)
+#if defined(DAEDALUS_GL) || defined(DAEDALUS_ACCURATE_TMEM) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined(DAEDALUS_GLES)
 static ETextureFormat SelectNativeFormat(const TextureInfo & ti [[maybe_unused]])
 {
 	// On OSX, always use RGBA 8888 textures.

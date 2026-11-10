@@ -51,7 +51,7 @@ public:
 	virtual void SwitchToLcdDisplay() {};
 	virtual void StoreSaveScreenData() {};
 
-#ifdef DAEDALUS_CTR
+#if defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)
 	virtual void ResetVertexBuffer() = 0;
 #endif
 	virtual void ClearAllSurfaces() = 0;

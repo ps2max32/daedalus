@@ -31,6 +31,9 @@ const s32 kInvalidThreadHandle = -1;
 #elif DAEDALUS_CTR
 using ThreadHandle = s32;
 const ThreadHandle	kInvalidThreadHandle = -1;
+#elif defined(DAEDALUS_PS2)
+using ThreadHandle = s32;
+const ThreadHandle	kInvalidThreadHandle = -1;
 #else
 using ThreadHandle = std::unique_ptr<std::thread>;  // Updated ThreadHandle type
 const ThreadHandle kInvalidThreadHandle = 0; 

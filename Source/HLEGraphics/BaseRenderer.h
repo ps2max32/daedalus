@@ -31,13 +31,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <pspgu.h>
 #elif defined(DAEDALUS_CTR)
 #include <GL/picaGL.h>
+#elif defined(DAEDALUS_PS2)
+#include <GL/gl.h>
 #elif defined(DAEDALUS_GLES)
 #include "SysGLES/GL.h"
 #else
 #include "SysGL/GL.h"
 #endif
 
-#ifdef DAEDALUS_CTR
+#if defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)
 #define HD_SCALE 0.8f
 #else
 #define HD_SCALE 0.754166f
@@ -257,7 +259,7 @@ public:
 	}
 	inline u32			GetTextureTile() const					{ return mTextureTile; }
 
-#ifdef DAEDALUS_CTR
+#if defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)
 	inline void			SetCullMode(bool enable, bool mode)		{ enable ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE); mode ? glCullFace(GL_BACK) : glCullFace(GL_FRONT); }
 #else
 	inline void			SetCullMode(bool enable, bool mode)		{ mTnL.Flags.TriCull = enable; mTnL.Flags.CullBack = mode; }
@@ -268,7 +270,7 @@ public:
 #ifdef DAEDALUS_PSP
 	inline void			SetFogMinMax(f32 fog_near, f32 fog_far)	{ mfog_near = fog_near; mfog_far = fog_far;}
 	inline void			SetFogColour( c32 colour )				{ mFogColour = colour; }
-#elif defined(DAEDALUS_VITA) || defined (DAEDALUS_CTR) || defined (DAEDALUS_GL) || defined (DAEDALUS_GLES)
+#elif defined(DAEDALUS_VITA) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined (DAEDALUS_GL) || defined (DAEDALUS_GLES)
 	inline void			SetFogMinMax(f32 fog_near, f32 fog_far)	{ glFogf(GL_FOG_START, fog_near); glFogf(GL_FOG_END, fog_far); }
 	inline void			SetFogColour( c32 colour )				{ float fog_clr[4] = {colour.GetRf(), colour.GetGf(), colour.GetBf(), colour.GetAf()}; glFogfv(GL_FOG_COLOR, &fog_clr[0]); }
 #endif
@@ -366,7 +368,7 @@ public:
 
 	virtual void 		ResetDebugState()						{}
 #endif
-#ifdef DAEDALUS_CTR
+#if defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)
 	inline float		N64ToScreenX(float x) const				{ return x * mN64ToScreenScale.x; }
 	inline float		N64ToScreenY(float y) const				{ return y * mN64ToScreenScale.y; }
 #else
@@ -494,7 +496,7 @@ protected:
 	float				mScreenWidth;
 	float				mScreenHeight;
 
-#if defined(DAEDALUS_GL) || defined(DAEDALUS_CTR) || defined(DAEDALUS_GLES)
+#if defined(DAEDALUS_GL) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined(DAEDALUS_GLES)
 	glm::mat4			mScreenToDevice;					// Used by OSX renderer - scales screen coords (0..640 etc) to device coords (-1..+1)
 #endif
 

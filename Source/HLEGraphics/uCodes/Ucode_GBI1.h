@@ -211,7 +211,7 @@ void DLParser_GBI1_MoveWord( MicroCodeCommand command )
 			if ((old_fog_mult != mul) || (old_fog_offs != offs)) {
 				old_fog_mult = mul;
 				old_fog_offs = offs;
-#ifndef DAEDALUS_CTR
+#if !defined(DAEDALUS_CTR) && !defined(DAEDALUS_PS2)
 				gRenderer->SetFogMultOffs(mul, offs);
 #else
 				f32 rng = 128000.0f / mul;

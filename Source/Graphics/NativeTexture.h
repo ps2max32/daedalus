@@ -34,8 +34,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "SysGLES/GL.h"
 #endif
 
-#ifdef DAEDALUS_CTR
+#if defined(DAEDALUS_CTR)
 #include <GL/picaGL.h>
+#elif defined(DAEDALUS_PS2)
+#include <GL/gl.h>
 #endif
 class c32;
 
@@ -66,12 +68,12 @@ class CNativeTexture
 		inline const void *				GetData() const					{ return mpData; }
 		inline void *					GetData()						{ return mpData; }
 
-#if defined(DAEDALUS_CTR)
+#if (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2))
 		inline GLuint					GetTextureId() const				{ return mTextureId; }
 
 #endif
 
-#if defined(DAEDALUS_PSP) || defined(DAEDALUS_CTR)
+#if defined(DAEDALUS_PSP) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2))
 		inline f32						GetScaleX() const				{ return mScale.x; }
 		inline f32						GetScaleY() const				{ return mScale.y; }
 #endif
@@ -90,11 +92,11 @@ class CNativeTexture
 		void *				mpData;
 		void *				mpPalette;
 
-#if defined(DAEDALUS_GL) || defined(DAEDALUS_CTR) || defined(DAEDALUS_GLES)
+#if defined(DAEDALUS_GL) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined(DAEDALUS_GLES)
 		GLuint				mTextureId;
 #endif
 
-#if defined(DAEDALUS_PSP) || defined(DAEDALUS_CTR) || defined(DAEDALUS_GLES)
+#if defined(DAEDALUS_PSP) || (defined(DAEDALUS_CTR) || defined(DAEDALUS_PS2)) || defined(DAEDALUS_GLES)
 		glm::vec2					mScale;
 		bool				mIsDataVidMem;
 		bool				mIsPaletteVidMem;
