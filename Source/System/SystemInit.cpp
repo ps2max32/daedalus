@@ -155,7 +155,7 @@ static const std::array<SysEntityEntry, 17> gSysInitTable =
 	{"ROM Database",		CRomDB::Create,				CRomDB::Destroy},
 	{"ROM Settings",		CRomSettingsDB::Create,		CRomSettingsDB::Destroy},
 	{"InputManager",		CInputManager::Create,		CInputManager::Destroy},
-	#ifndef DAEDALUS_CTR
+	#if !defined(DAEDALUS_CTR) && !defined(DAEDALUS_PS2)
 	{"Language",			Translate_Init,				NULL},
 	#endif
 #ifdef DAEDALUS_PSP

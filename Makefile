@@ -34,7 +34,8 @@ CXX      := $(LLVM)/clang++
 
 LIBRT    = $(MAXSDK_OUT)/librt.a
 # libmxc's malloc (TLSF): picolibc's clears what it hands out and walks the heap on free
-LIBMXC_OBJS = $(OUT)/libc/glue.o $(MAXSDK_OUT)/libc/compat.c.o $(MAXSDK_OUT)/libc/atomic.c.o \
+# atomic.c built here: its fetch_or/and/xor are newer than maxsdk's build
+LIBMXC_OBJS = $(OUT)/libc/glue.o $(MAXSDK_OUT)/libc/compat.c.o $(OUT)/libc/atomic.o \
               $(MAXSDK_OUT)/libc/malloc.c.o
 LIBC_LIBS = $(LIBMXC_OBJS) $(LIBCXX)/lib/libc++.a $(LIBCXX)/lib/libc++abi.a $(PICOLIBC_A) \
             $(MX_LIB) $(LIBRT)
@@ -49,7 +50,8 @@ LIB_FLAGS := $(TARGETF) -nostdlibinc $(SYSINC) -ffunction-sections -fdata-sectio
 OPT      ?= -O2
 # the options upstream's CMake gives a PSP build, without the PSP's hardware
 # (Media Engine, VFPU) and with the dynarec off (phase 5)
-DEFS     := -DDAEDALUS_PS2 -DDAEDALUS_ENDIAN_LITTLE -DDAEDALUS_SIM_DOUBLES -DDAEDALUS_SILENT \
+# DAEDALUS_ACCURATE_CVT: float to int in the FCSR rounding mode (the EE cvt.w.s truncates)
+DEFS     := -DDAEDALUS_PS2 -DDAEDALUS_ENDIAN_LITTLE -DDAEDALUS_SIM_DOUBLES -DDAEDALUS_ACCURATE_CVT -DDAEDALUS_SILENT \
             -DDAEDALUS_ENABLE_OS_HOOKS -D_USE_MATH_DEFINES -DDAEDALUS_CONFIG_VERSION='"PS2"' \
             -D_GNU_SOURCE -DNDEBUG $(EXTRA_DEFS)
 COMMON   := $(TARGETF) $(OPT) -fno-common -ffunction-sections -fdata-sections -MMD \
@@ -85,7 +87,7 @@ PS2_CXX  := $(patsubst $(S)/%.cpp,%,$(wildcard $(P)/*.cpp $(P)/*/*.cpp $(P)/*/*/
             HLEAudio/Plugin/PS2/AudioPluginPS2
 PS2_C    := $(patsubst $(S)/%.c,%,$(wildcard $(P)/*.c $(P)/*/*.c))
 ZLIB_SRC ?= $(PS2MAX)/libs/zlib
-ZLIB_C   := adler32 crc32 inffast inflate inftrees uncompr zutil deflate trees
+ZLIB_C   := adler32 crc32 inffast inflate inftrees uncompr zutil deflate trees gzlib gzread gzwrite gzclose
 
 UP_OBJS  := $(patsubst %,$(OUT)/o/%.o,$(UPSTREAM))
 PS2_OBJS := $(patsubst %,$(OUT)/o/%.o,$(PS2_CXX)) $(patsubst %,$(OUT)/o/%.c.o,$(PS2_C))
@@ -102,6 +104,12 @@ $(OUT)/zlib/%.o: $(ZLIB_SRC)/%.c $(PICOLIBC_A)
 	@mkdir -p $(dir $@)
 	$(CC) $(DCFLAGS) -c $< -o $@
 
+# the ROM settings, read from the ELF's directory
+all: $(OUT)/roms.ini
+$(OUT)/roms.ini: $(HERE)/Data/roms.ini
+	@mkdir -p $(dir $@)
+	cp $< $@
+
 # phase 0: everything upstream compiles (make upstream)
 upstream: $(UP_OBJS)
 
@@ -112,8 +120,12 @@ $(OUT)/libc/glue.o: $(MAXSDK)/ee/libc/glue.c $(PICOLIBC_A) $(HERE)/Makefile
 	$(CC) $(filter-out -ffreestanding,$(CFLAGS)) -nostdlibinc $(SYSINC) -Dread=mx_glue_read \
 	  -Dwrite=mx_glue_write -D_exit=mx_glue_exit -c $< -o $@
 
-$(OUT)/daedalus.elf: $(OBJS) $(MXGL_OBJS) $(MX_LIB) $(MX_CRT0) $(MX_LD) $(LIBC_LIBS)
-	$(call link,$@,--error-limit=0 --defsym=__mx_stack_size=0x40000 $(MX_CRT0) $(OBJS) \
+$(OUT)/libc/atomic.o: $(MAXSDK)/ee/libc/atomic.c $(PICOLIBC_A) $(HERE)/Makefile
+	@mkdir -p $(dir $@)
+	$(CC) $(filter-out -ffreestanding,$(CFLAGS)) -nostdlibinc $(SYSINC) -c $< -o $@
+
+$(OUT)/daedalus.elf: $(OBJS) $(MXGL_OBJS) $(HLSL_OBJS) $(MX_LIB) $(MX_CRT0) $(MX_LD) $(LIBC_LIBS)
+	$(call link,$@,--error-limit=0 --defsym=__mx_stack_size=0x40000 $(MX_CRT0) $(OBJS) $(HLSL_OBJS) \
 	  $(MXGL_OBJS) --start-group $(LIBC_LIBS) --end-group)
 
 # ---- picolibc and libc++ (as apps/descent3) -----------------------------------

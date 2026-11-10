@@ -46,6 +46,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <float.h>
 #endif
 
+// The EE's FPU has no doubles either: N64 doubles are run as floats too
+#ifdef DAEDALUS_PS2
+#define SIM_DOUBLES
+#endif
+
 #if defined(DAEDALUS_POSIX) || defined(DAEDALUS_W32)
 #include <fenv.h>
 #endif
@@ -57,7 +62,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 std::default_random_engine R4300_Rand();
 
-#if defined(DAEDALUS_PSP) && defined(SIM_DOUBLES)
+#if (defined(DAEDALUS_PSP) || defined(DAEDALUS_PS2)) && defined(SIM_DOUBLES)
 #define R4300_IsNaN(x) 		isnanf((x))
 #define R4300_Sqrt(x)		sqrtf((x))
 #define R4300_SqrtD(x)		sqrtf((x))

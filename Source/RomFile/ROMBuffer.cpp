@@ -47,6 +47,11 @@ extern bool PSP_IS_SLIM;
 extern bool isN3DS;
 #endif
 
+#ifdef DAEDALUS_PS2
+// the ROM is a file mapped read-only into virtual memory
+#include "SysPS2/RomMapPS2.h"
+#endif
+
 namespace
 {
 	bool			sRomLoaded	= false;
@@ -206,6 +211,20 @@ bool RomBuffer::Open()
 
 	sRomSize = p_rom_file->GetRomSize();
 
+#ifdef DAEDALUS_PS2
+	{
+		u32 size = 0;
+		const void * p = PS2_MapRom( filename, &size );
+		if( p == nullptr )
+			return false;
+		spRomData = (u8 *)p;
+		sRomSize = size;
+		sRomFixed = true;
+		sRomLoaded = true;
+		return true;
+	}
+#endif
+
 	if( ShouldLoadAsFixed( sRomSize ) )
 	{
 		// Now, allocate memory for rom - round up to a 4 byte boundry
@@ -323,7 +342,11 @@ void	RomBuffer::Close()
 {
 	if (spRomData)
 	{
+#ifdef DAEDALUS_PS2
+		PS2_UnmapRom( spRomData );
+#else
 		CROMFileMemory::Get()->Free( spRomData );
+#endif
 		spRomData = nullptr;
 	}
 
@@ -408,7 +431,12 @@ void	RomBuffer::SaveRomValue( u32 value )
 void	RomBuffer::PutRomBytesRaw( u32 rom_start, const void * p_src, u32 length )
 {
 	DAEDALUS_ASSERT( sRomFixed, "Cannot put rom bytes when the data isn't fixed" );
+#ifdef DAEDALUS_PS2
+	// read-only, as a cartridge's ROM
+	DAEDALUS_USE( rom_start ); DAEDALUS_USE( p_src ); DAEDALUS_USE( length );
+#else
 	memcpy( (u8*)spRomData + rom_start, p_src, length );
+#endif
 }
 
 
@@ -491,10 +519,17 @@ bool RomBuffer::CopyFromRam( u32 dst_offset, const u8 * p_src, u32 src_offset, u
 {
 	if( sRomFixed )
 	{
+#ifdef DAEDALUS_PS2
+		// read-only, as a cartridge's ROM: the write is dropped
+		DAEDALUS_USE( dst_offset ); DAEDALUS_USE( p_src ); DAEDALUS_USE( src_offset );
+		DAEDALUS_USE( src_size ); DAEDALUS_USE( length );
+		return true;
+#else
 		u8 * p_dst = (u8 *)spRomData;
 		u32	dst_size = sRomSize;
 
 		return DMA_HandleTransfer( p_dst, dst_offset, dst_size, p_src, src_offset, src_size, length );
+#endif
 	}
 	else
 	{
