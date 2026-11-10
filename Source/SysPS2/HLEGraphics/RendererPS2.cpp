@@ -668,8 +668,9 @@ void RendererPS2::TexRect(u32 tile_idx, const glm::vec2 & xy0, const glm::vec2 &
 
 	auto texture = mBoundTexture[0];
 
-	float scale_x = texture->GetScaleX();
-	float scale_y = texture->GetScaleY();
+	// no texture loaded (a game's mistake): no crash, the rectangle untextured
+	float scale_x = texture ? texture->GetScaleX() : 1.0f;
+	float scale_y = texture ? texture->GetScaleY() : 1.0f;
 
 	DaedalusVtx p_vertices[4];
 
@@ -726,8 +727,9 @@ void RendererPS2::TexRectFlip(u32 tile_idx, const glm::vec2 & xy0, const glm::ve
 
 	auto texture = mBoundTexture[0];
 
-	float scale_x = texture->GetScaleX();
-	float scale_y = texture->GetScaleY();
+	// no texture loaded (a game's mistake): no crash, the rectangle untextured
+	float scale_x = texture ? texture->GetScaleX() : 1.0f;
+	float scale_y = texture ? texture->GetScaleY() : 1.0f;
 
 	DaedalusVtx p_vertices[4];
 

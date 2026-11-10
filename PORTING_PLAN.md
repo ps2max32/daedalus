@@ -4,6 +4,27 @@ Repository: ps2max32/daedalus (a fork; `upstream` DaedalusX64/daedalus, based on
 upstream `Source/` untouched where possible, a new platform `Source/SysPS2/` and a
 `DAEDALUS_PS2` define, built with a Makefile on maxsdk (not upstream's CMake).
 
+## Status
+
+- **Phase 0, done:** `make` builds `daedalus.elf` on maxsdk (picolibc, libc++ in C++23 without
+  threads: `std::mutex` and `std::scoped_lock` on maxsdk semaphores in `SysPS2/include/ps2_port.h`;
+  the part of GLM Daedalus uses in `SysPS2/include/glm`).
+- **Phase 1, done:** Super Mario 64 boots on the interpreter from a `.z64`, converted once into
+  a `.n64` and mapped into VM (`SysPS2/RomMapPS2.cpp`); saves are written; it returns to the
+  kernel with status 0.
+- **Phase 2, done:** the renderer is the **3DS backend's** (`SysCTR`: GL 1.x vertex arrays,
+  not the PSP's sceGu), on libgl, in a 640 x 480 window of the TV picture. libgl got `GL_BLEND`
+  and `GL_ADD` (two passes, with the texture's alpha), `GL_TEXTURE_ENV_COLOR`, and grey textures
+  with transparent black kept transparent (fonts). Checked on the PS2: Super Mario 64's title
+  (Mario's head), file select and the castle intro (3D, Lakitu) render correctly; the 13
+  combiners up to there are all exact, forced or overridden, none falls back to the default.
+  No PC build of Daedalus was made to compare against: the screens were compared with the game
+  as it looks on the N64.
+- Speed on the interpreter: title 4 frames/s, file select 19, castle intro 12.5 (the N64
+  draws 30).
+- Test runs: `daedalus.elf -frames N -shot host:x.tga -pad 250:start,440:a <rom>`;
+  `make EXTRA_DEFS=-DPS2_LOG_COMBINERS` logs each new combiner.
+
 ## What the survey found
 
 **Size.** Core 11k lines, dynarec common 6k + MIPS backend 7.5k, HLE graphics 14k, HLE
@@ -46,6 +67,8 @@ audio 7k, PSP platform 14.5k (of which we reuse the renderer half).
   (`CodeBufferManagerPSP.cpp:141`); the texture cache is purged by age.
 
 **Graphics.**
+- (Later found: the 3DS backend, `SysCTR/HLEGraphics`, is the PSP renderer translated to GL
+  1.x texture environments and vertex arrays; the port uses it.)
 - A backend implements 7 virtuals of `BaseRenderer` (`HLEGraphics/BaseRenderer.h:231`):
   `TexRect`, `TexRectFlip`, `FillRect`, `Draw2DTexture`, `Draw2DTextureR`,
   `RestoreRenderStates`, `RenderTriangles`. It also needs `CGraphicsContext`,
