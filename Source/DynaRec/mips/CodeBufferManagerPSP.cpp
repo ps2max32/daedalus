@@ -25,7 +25,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Utility/MathUtil.h"
 #include "CodeGeneratorPSP.h"
 
+#ifdef DAEDALUS_PS2
+extern "C" {
+#include <mx/vm.h>
+}
+#include <stdlib.h>
+#else
 #include <psputilsforkernel.h>
+#endif
 
 extern "C" { void _DaedalusICacheInvalidate( const void * address, u32 length ); }
 
@@ -46,15 +53,31 @@ struct SCodeBuffer
 	{
 		mBufferPtr = 0;
 		mBufferSize = size;
+#ifdef DAEDALUS_PS2
+		// in the first 256 MiB (the heap, VM at 0x08000000), as the C code is:
+		// the generated code calls it with JAL. Pinned: never paged out or
+		// moved (its cache lines are flushed once)
+		mpBuffer = static_cast< u8 * >( aligned_alloc( 64, size ) );
+		mx_vm_pin( mpBuffer, size, 0 );
+#else
 		mpBuffer = new u8[ size ];
+#endif
 	}
 
 	void	Finalise()
 	{
+#ifdef DAEDALUS_PS2
+		if (mpBuffer != nullptr)
+		{
+			_DaedalusICacheInvalidate( mpBuffer, mBufferPtr );
+			mx_vm_unpin( mpBuffer, mBufferSize );
+			free( mpBuffer );
+#else
 		sceKernelIcacheInvalidateRange( mpBuffer, mBufferPtr );
 		if (mpBuffer != nullptr)
 		{
 			delete [] mpBuffer;
+#endif
 			mpBuffer = nullptr;
 		}
 		mBufferPtr = 0;
@@ -140,7 +163,7 @@ std::shared_ptr<CCodeBufferManager> CCodeBufferManager::Create()
 
 bool	CCodeBufferManagerPSP::Initialise()
 {
-#ifdef DAEDALUS_DEBUG_DYNAREC
+#if defined(DAEDALUS_DEBUG_DYNAREC) || defined(DAEDALUS_PS2)	// the PS2: 2 x 2 MB of its 32
 	//Use 2MB for each code buffer. When debugging dynarec, additional spare memory is needed for storing info from dynarec.
 	mPrimaryBuffer.Initialise( 2 * 1024 * 1024 );
 	mSecondaryBuffer.Initialise( 2 * 1024 * 1024 );

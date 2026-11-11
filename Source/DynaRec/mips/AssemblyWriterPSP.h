@@ -175,6 +175,9 @@ class CAssemblyWriterPSP
 		}
 
 	private:
+#ifdef DAEDALUS_PS2
+		void				PadShortLoop( CCodeLabel target );
+#endif
 		CJumpLocation		BranchOp( EPspReg a, OpCodeValue op, EPspReg b, CCodeLabel target, bool insert_delay );
 		CJumpLocation		BranchRegImmOp( EPspReg a, ERegImmOp op, CCodeLabel target, bool insert_delay );
 		void				SpecOpLogical( EPspReg rd, EPspReg rs, ESpecOp op, EPspReg rt );

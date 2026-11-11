@@ -525,6 +525,11 @@ bool ROM_LoadFile(const RomID & rom_id, const RomSettings & settings, const SRom
 
 	// Read and apply preferences from preferences.ini
 	preferences.Apply();
+#ifdef DAEDALUS_PS2
+	extern bool gPS2NoDynarec;	// -nodynarec (SysPS2/main.cpp)
+	if( gPS2NoDynarec )
+		gDynarecEnabled = false;
+#endif
 
 	// Parse cheat file this rom, if cheat feature is enabled
 	// This is also done when accessing the cheat menu

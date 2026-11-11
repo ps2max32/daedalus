@@ -20,6 +20,19 @@ upstream `Source/` untouched where possible, a new platform `Source/SysPS2/` and
   combiners up to there are all exact, forced or overridden, none falls back to the default.
   No PC build of Daedalus was made to compare against: the screens were compared with the game
   as it looks on the N64.
+- **Phase 5, in progress:** `make DYNAREC=1` builds the PSP's MIPS recompiler with the EE's
+  changes: EXT/INS as shifts, TRUNC as the EE's truncating CVT.W.S, FLOOR and CVT.W through the
+  interpreter, the compares mapped onto C.F/EQ/LT/LE, short loops padded (R5900 erratum), $gp
+  (not k0/k1, which the BIOS's interrupts use) as the direct loads' and stores' base, stubs for
+  n32 (64-bit saves, 16-byte frames, float/double conversion without EXT/INS/CLZ), the code
+  buffers in the heap (JAL reaches only the first 256 MiB) and pinned, the instruction cache
+  flushed with CACHE IHIN. Fixed an upstream bug: the CACHE instruction's call left the base
+  register cached in $at across the C call. In PCSX2 (EE interpreter, software renderer) the
+  title, file select and castle intro run, the intro identical to the interpreter's at frame
+  1100. Not yet run on the PS2 (a first try crashed on the code buffer's address, since
+  fixed); `DYNAREC` stays 0 by default until it is.
+- Options for testing: `-nodynarec`, `-sum N` (RDRAM CRC every N frames), `-watch` (every 2 s
+  the interrupted PC, the N64 PC and the code around it).
 - Speed on the interpreter: title 4 frames/s, file select 19, castle intro 12.5 (the N64
   draws 30).
 - Test runs: `daedalus.elf -frames N -shot host:x.tga -pad 250:start,440:a <rom>`;

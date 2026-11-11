@@ -54,7 +54,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //
 // Banjo Tooie needs a larger cache size
 // BUT leave PSP cache size untouched for now
-#ifdef DAEDALUS_PSP
+#if defined(DAEDALUS_PSP) || defined(DAEDALUS_PS2)
 #define TRACE_SIZE 512
 #else
 #define TRACE_SIZE 1024

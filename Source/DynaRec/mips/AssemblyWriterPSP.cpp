@@ -311,8 +311,29 @@ void 	CAssemblyWriterPSP::JR( EPspReg reg_link, bool insert_delay )
 
 //
 
+#ifdef DAEDALUS_PS2
+//	R5900 erratum: a loop of six instructions or fewer (the delay slot
+//	included) with one conditional branch at its end may run only once or
+//	twice. A branch back to a known label that close gets NOPs before it.
+void	CAssemblyWriterPSP::PadShortLoop( CCodeLabel target )
+{
+	if( target.GetTargetU8P() == nullptr )
+		return;
+	s32 offset( mpCurrentBuffer->GetJumpLocation().GetOffset( target ) );
+	if( offset > 0 )
+		return;
+	s32 loop_ops = -offset / 4 + 2;		// the ops from the target, the branch and its delay slot
+	PspOpCode	nop {};
+	for( ; loop_ops <= 6; loop_ops++ )
+		AppendOp( nop );
+}
+#endif
+
 CJumpLocation	CAssemblyWriterPSP::BranchOp( EPspReg a, OpCodeValue op, EPspReg b, CCodeLabel target, bool insert_delay )
 {
+#ifdef DAEDALUS_PS2
+	PadShortLoop( target );
+#endif
 	CJumpLocation	branch_location( mpCurrentBuffer->GetJumpLocation() );
 	s32				offset( branch_location.GetOffset( target ) );
 
@@ -387,6 +408,9 @@ CJumpLocation	CAssemblyWriterPSP::BGTZ( EPspReg a, CCodeLabel target, bool inser
 
 CJumpLocation	CAssemblyWriterPSP::BranchRegImmOp( EPspReg a, ERegImmOp op, CCodeLabel target, bool insert_delay )
 {
+#ifdef DAEDALUS_PS2
+	PadShortLoop( target );
+#endif
 	CJumpLocation	branch_location( mpCurrentBuffer->GetJumpLocation() );
 	s32				offset( branch_location.GetOffset( target ) );
 
@@ -502,6 +526,12 @@ void	CAssemblyWriterPSP::SLTIU( EPspReg reg_dst, EPspReg reg_src, s16 value )
 
 void	CAssemblyWriterPSP::EXT( EPspReg reg_dst, EPspReg reg_src, u32 size, u32 lsb )
 {
+#ifdef DAEDALUS_PS2
+	// the EE has no EXT: shifted up to the top, then down (size is msb - lsb)
+	SLL( reg_dst, reg_src, 31 - (lsb + size) );
+	SRL( reg_dst, reg_dst, 31 - size );
+	return;
+#endif
 	PspOpCode	op_code {};
 	op_code._u32 = 0;
 	op_code.op = 0x1F;
@@ -518,6 +548,19 @@ void	CAssemblyWriterPSP::EXT( EPspReg reg_dst, EPspReg reg_src, u32 size, u32 ls
 
 void	CAssemblyWriterPSP::INS( EPspReg reg_dst, EPspReg reg_src, u32 msb, u32 lsb )
 {
+#ifdef DAEDALUS_PS2
+	// the EE has no INS: dst ^= ((dst ^ (src << lsb)) & field), with $gp
+	// (the dynarec's scratch register on the PS2) for the difference
+	u32 width = msb - lsb + 1;
+	DAEDALUS_ASSERT( width <= 16, "INS wider than 16 bits" );
+	SLL( PspReg_GP, reg_src, lsb );
+	XOR( PspReg_GP, PspReg_GP, reg_dst );
+	SRL( PspReg_GP, PspReg_GP, lsb );
+	ANDI( PspReg_GP, PspReg_GP, u16( ( 1u << width ) - 1 ) );
+	SLL( PspReg_GP, PspReg_GP, lsb );
+	XOR( reg_dst, reg_dst, PspReg_GP );
+	return;
+#endif
 	PspOpCode	op_code {};
 	op_code._u32 = 0;
 	op_code.op = 0x1F;
@@ -925,6 +968,11 @@ void	CAssemblyWriterPSP::NEG_S( EPspFloatReg fd, EPspFloatReg fs )
 
 void	CAssemblyWriterPSP::TRUNC_W_S( EPspFloatReg fd, EPspFloatReg fs )
 {
+#ifdef DAEDALUS_PS2
+	// the EE's CVT.W.S truncates (it has no TRUNC.W.S)
+	Cop1Op( Cop1Op_SInstr, fd, fs, Cop1OpFunc_CVT_W );
+	return;
+#endif
 	Cop1Op( Cop1Op_SInstr, fd, fs, Cop1OpFunc_TRUNC_W );
 }
 
@@ -948,6 +996,11 @@ void	CAssemblyWriterPSP::CVT_W_S( EPspFloatReg fd, EPspFloatReg fs )
 
 void	CAssemblyWriterPSP::CMP_S( EPspFloatReg fs, ECop1OpFunction	cmp_op, EPspFloatReg ft )
 {
+#ifdef DAEDALUS_PS2
+	// the EE has C.F, C.EQ, C.LT and C.LE only, and no NaN: the unordered and
+	// signalling forms are the same as these
+	cmp_op = ECop1OpFunction( 0x30 | ( cmp_op & 6 ) );
+#endif
 	Cop1Op( Cop1Op_SInstr, PspFloatReg_F00, fs, cmp_op, ft );
 }
 
@@ -964,6 +1017,9 @@ void	CAssemblyWriterPSP::CVT_S_W( EPspFloatReg fd, EPspFloatReg fs )
 
 CJumpLocation	CAssemblyWriterPSP::BranchCop1( ECop1BCOp bc_op, CCodeLabel target, bool insert_delay )
 {
+#ifdef DAEDALUS_PS2
+	PadShortLoop( target );
+#endif
 	CJumpLocation	branch_location( mpCurrentBuffer->GetJumpLocation() );
 	s32				offset( branch_location.GetOffset( target ) );
 

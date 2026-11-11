@@ -71,6 +71,17 @@ extern "C" { void _DDIVU( u64 Num, u32 Div ); }	//unsigned 64bit division  //Cor
 extern "C" { void _DMULTU( u64 A, u64 B ); }	//unsigned 64bit multiply  //Corn
 extern "C" { void _DMULT( s64 A, s64 B ); }	//signed 64bit multiply (result is 64bit not 128bit!)  //Corn
 
+// the base registers of direct loads and stores: k0/k1 on the PSP; on the PS2
+// the BIOS's interrupt handler uses them, so $gp (not used by the EE's code,
+// saved by _EnterDynaRec)
+#ifdef DAEDALUS_PS2
+static const EPspReg kLoadBaseReg = PspReg_GP;
+static const EPspReg kStoreBaseReg = PspReg_GP;
+#else
+static const EPspReg kLoadBaseReg = PspReg_K0;
+static const EPspReg kStoreBaseReg = PspReg_K1;
+#endif
+
 extern "C" { u64 _FloatToDouble( u32 _float); }	//Uses CPU to pass f64/32 thats why its maskerading as u64/32 //Corn
 extern "C" { u32 _DoubleToFloat( u64 _double); }	//Uses CPU to pass f64/32 thats why its maskerading as u64/32 //Corn
 
@@ -1591,7 +1602,9 @@ CJumpLocation	CCodeGeneratorPSP::GenerateOpCode( const STraceEntry& ti, bool bra
 
 				case Cop1OpFunc_TRUNC_W:	GenerateTRUNC_W_D_Sim( op_code.fd, op_code.fs ); handled = true; break;
 
+#ifndef DAEDALUS_PS2	// the EE's cvt.w.s truncates: in the FCSR's rounding mode, the interpreter's
 				case Cop1OpFunc_CVT_W:		GenerateCVT_W_D_Sim( op_code.fd, op_code.fs ); handled = true; break;
+#endif
 				case Cop1OpFunc_CVT_S:		GenerateCVT_S_D_Sim( op_code.fd, op_code.fs ); handled = true; break;
 
 				case Cop1OpFunc_CMP_F:		GenerateCMP_D_Sim( op_code.fs, Cop1OpFunc_CMP_F, op_code.ft ); handled = true; break;
@@ -1634,9 +1647,11 @@ CJumpLocation	CCodeGeneratorPSP::GenerateOpCode( const STraceEntry& ti, bool bra
 			case Cop1OpFunc_NEG:	GenerateNEG_S( op_code.fd, op_code.fs ); handled = true; break;
 
 			case Cop1OpFunc_TRUNC_W:	GenerateTRUNC_W_S( op_code.fd, op_code.fs ); handled = true; break;
+#ifndef DAEDALUS_PS2	// the EE has no floor.w.s and its cvt.w.s truncates: the interpreter's
 			case Cop1OpFunc_FLOOR_W:	GenerateFLOOR_W_S( op_code.fd, op_code.fs ); handled = true; break;
 
 			case Cop1OpFunc_CVT_W:		GenerateCVT_W_S( op_code.fd, op_code.fs ); handled = true; break;
+#endif
 			case Cop1OpFunc_CVT_D:		if( gDynarecDoublesOptimisation & !g_ROM.DISABLE_SIM_CVT_D_S ) GenerateCVT_D_S_Sim( op_code.fd, op_code.fs );	//Sim has issues with EWJ/Tom&Jerry/PowerPuffGirls
 										else GenerateCVT_D_S( op_code.fd, op_code.fs );
 										handled = true;
@@ -1984,14 +1999,17 @@ void	CCodeGeneratorPSP::GenerateLoad( u32 current_pc,
 			//Re use old base register if consegutive accesses from same base register //Corn
 			if( n64_base == mPreviousLoadBase )
 			{
-				CAssemblyWriterPSP::LoadRegister( psp_dst, load_op, PspReg_K0, offset );
+				CAssemblyWriterPSP::LoadRegister( psp_dst, load_op, kLoadBaseReg, offset );
 				return;
 			}
 			else
 			{
-				ADDU( PspReg_K0, reg_address, gMemoryBaseReg );
-				CAssemblyWriterPSP::LoadRegister( psp_dst, load_op, PspReg_K0, offset );
+				ADDU( kLoadBaseReg, reg_address, gMemoryBaseReg );
+				CAssemblyWriterPSP::LoadRegister( psp_dst, load_op, kLoadBaseReg, offset );
 				mPreviousLoadBase = n64_base;
+#ifdef DAEDALUS_PS2
+				mPreviousStoreBase = N64Reg_R0;	// one base register for both
+#endif
 				return;
 			}
 		}
@@ -2276,14 +2294,17 @@ void	CCodeGeneratorPSP::GenerateStore( u32 current_pc,
 		//Re use old base register if consegutive accesses from same base register //Corn
 		if( n64_base == mPreviousStoreBase )
 		{
-			CAssemblyWriterPSP::StoreRegister( psp_src, store_op, PspReg_K1, offset );
+			CAssemblyWriterPSP::StoreRegister( psp_src, store_op, kStoreBaseReg, offset );
 			return;
 		}
 		else
 		{
-			ADDU( PspReg_K1, reg_address, gMemoryBaseReg );
-			CAssemblyWriterPSP::StoreRegister( psp_src, store_op, PspReg_K1, offset );
+			ADDU( kStoreBaseReg, reg_address, gMemoryBaseReg );
+			CAssemblyWriterPSP::StoreRegister( psp_src, store_op, kStoreBaseReg, offset );
 			mPreviousStoreBase = n64_base;
+#ifdef DAEDALUS_PS2
+			mPreviousLoadBase = N64Reg_R0;	// one base register for both
+#endif
 			return;
 		}
 	}
@@ -2385,6 +2406,10 @@ inline void	CCodeGeneratorPSP::GenerateCACHE( EN64Reg base, s16 offset, u32 cach
 		ADDI(PspReg_A0, PspReg_A0, offset);
 		JAL( CCodeLabel( reinterpret_cast< const void * >( CPU_InvalidateICacheRange ) ), false );
 		ORI(PspReg_A1, PspReg_R0, 0x20);
+		// LoadRegister above may have loaded base into a temporary register (and
+		// marked it valid again after the flush): the C function may change any
+		// temporary register (clang's code uses $at too), so forget them
+		FlushAllTemporaryRegisters(mRegisterCache, true);
 	}
 	//else
 	//{
@@ -4650,6 +4675,9 @@ inline void	CCodeGeneratorPSP::GenerateCMP_D_Sim( u32 fs, ECop1OpFunction cmp_op
 	CFC1( PspReg_A0, (EPspFloatReg)31 );
 	EXT( PspReg_A0, PspReg_A0, 0, 23 );	//Extract condition bit (true/false)
 	INS( PspReg_V0, PspReg_A0, 23, 23 );	//Insert condition bit (true/false)
+#ifdef DAEDALUS_PS2
+	mPreviousLoadBase = mPreviousStoreBase = N64Reg_R0;	// INS used $gp
+#endif
 	SetVar( &gCPUState.FPUControl[31]._u32, PspReg_V0 );
 
 #else //Improved version with only one branch //Corn
@@ -4958,6 +4986,9 @@ inline void	CCodeGeneratorPSP::GenerateCMP_S( u32 fs, ECop1OpFunction cmp_op, u3
 	CFC1( PspReg_A0, (EPspFloatReg)31 );
 	EXT( PspReg_A0, PspReg_A0, 0, 23 );	//Extract condition bit (true/false)
 	INS( PspReg_V0, PspReg_A0, 23, 23 );	//Insert condition bit (true/false)
+#ifdef DAEDALUS_PS2
+	mPreviousLoadBase = mPreviousStoreBase = N64Reg_R0;	// INS used $gp
+#endif
 	SetVar( &gCPUState.FPUControl[31]._u32, PspReg_V0 );
 
 #else //Improved version with only one branch //Corn

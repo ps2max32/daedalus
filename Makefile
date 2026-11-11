@@ -50,10 +50,12 @@ LIB_FLAGS := $(TARGETF) -nostdlibinc $(SYSINC) -ffunction-sections -fdata-sectio
 OPT      ?= -O2
 # the options upstream's CMake gives a PSP build, without the PSP's hardware
 # (Media Engine, VFPU) and with the dynarec off (phase 5)
+# DYNAREC=1: the PSP's MIPS recompiler with the EE's changes (phase 5); 0: the interpreter
+DYNAREC  ?= 0
 # DAEDALUS_ACCURATE_CVT: float to int in the FCSR rounding mode (the EE cvt.w.s truncates)
 DEFS     := -DDAEDALUS_PS2 -DDAEDALUS_ENDIAN_LITTLE -DDAEDALUS_SIM_DOUBLES -DDAEDALUS_ACCURATE_CVT -DDAEDALUS_SILENT \
             -DDAEDALUS_ENABLE_OS_HOOKS -D_USE_MATH_DEFINES -DDAEDALUS_CONFIG_VERSION='"PS2"' \
-            -D_GNU_SOURCE -DNDEBUG $(EXTRA_DEFS)
+            -D_GNU_SOURCE -DNDEBUG $(if $(filter 1,$(DYNAREC)),-DDAEDALUS_ENABLE_DYNAREC) $(EXTRA_DEFS)
 COMMON   := $(TARGETF) $(OPT) -fno-common -ffunction-sections -fdata-sections -MMD \
             -fno-strict-aliasing -ffinite-math-only -fno-math-errno -ffast-math -mvu0 \
             -Wno-multichar -Wno-c++11-narrowing $(DEFS) -I$(S) -I$(MXGL_INC) -I$(MAXSDK)/ee/include
@@ -65,8 +67,15 @@ DCFLAGS  := $(COMMON) -std=gnu11 -nostdlibinc $(SYSINC)
 CORE     := $(addprefix Core/,CPU DMA Dynamo FlashMem Interpret Interrupt Memory PIF R4300 RDRam \
               ROM ROMImage RSP_HLE Save TLB)
 DEBUG    := $(addprefix Debug/,DebugLog Dump PrintOpCode Registers)
-DYNAREC  := $(addprefix DynaRec/,BranchType DynaRecProfile Fragment FragmentCache IndirectExitMap \
-              StaticAnalysis TraceRecorder dummy/CodeBufferManagerDummy dummy/AssemblyUtilsDummy)
+DYNAREC_SRCS := $(addprefix DynaRec/,BranchType DynaRecProfile Fragment FragmentCache IndirectExitMap \
+              StaticAnalysis TraceRecorder)
+ifeq ($(DYNAREC),1)
+DYNAREC_SRCS += $(addprefix DynaRec/mips/,AssemblyUtilsPSP AssemblyWriterPSP CodeBufferManagerPSP \
+              CodeGeneratorPSP DynaRecDebug DynarecTargetPSP CacheR5900)
+DYNAREC_ASM := DynaRec/mips/DynaRecStubsPS2
+else
+DYNAREC_SRCS += DynaRec/dummy/CodeBufferManagerDummy DynaRec/dummy/AssemblyUtilsDummy
+endif
 GRAPHICS := $(addprefix Graphics/,ColourValue HvqmTask JpegTask TextureTransform)
 HLEAUDIO := $(addprefix HLEAudio/,ABI1 ABI2 ABI3 ABI3mp3 AudioBuffer ABI_ADPCM ABI_Buffers \
               ABI_Filters ABI_MixerInterleave ABI_Resample ENV_Mixer HLEAudioState HLEMain)
@@ -79,7 +88,7 @@ ROMFILE  := $(addprefix RomFile/,RomFile RomFileCache RomFileCompressed RomFileM
 SYSTEM   := $(addprefix System/,CompressedStream SystemInit)
 UTILITY  := $(addprefix Utility/,CRC FastMemcpy FramerateLimiter Hash IniFile MemoryHeap Paths \
               Profiler Stream StringUtil Timer Translate)
-UPSTREAM := $(CORE) $(DEBUG) $(DYNAREC) $(GRAPHICS) $(HLEAUDIO) $(HLEGFX) $(IFACE) $(OSHLE) \
+UPSTREAM := $(CORE) $(DEBUG) $(DYNAREC_SRCS) $(GRAPHICS) $(HLEAUDIO) $(HLEGFX) $(IFACE) $(OSHLE) \
             $(ROMFILE) $(SYSTEM) $(UTILITY)
 # the platform: Source/SysPS2 and the PS2 directories next to the other platforms'
 PS2_CXX  := $(patsubst $(S)/%.cpp,%,$(wildcard $(P)/*.cpp $(P)/*/*.cpp $(P)/*/*/*.cpp)) \
@@ -89,7 +98,7 @@ PS2_C    := $(patsubst $(S)/%.c,%,$(wildcard $(P)/*.c $(P)/*/*.c))
 ZLIB_SRC ?= $(PS2MAX)/libs/zlib
 ZLIB_C   := adler32 crc32 inffast inflate inftrees uncompr zutil deflate trees gzlib gzread gzwrite gzclose
 
-UP_OBJS  := $(patsubst %,$(OUT)/o/%.o,$(UPSTREAM))
+UP_OBJS  := $(patsubst %,$(OUT)/o/%.o,$(UPSTREAM)) $(patsubst %,$(OUT)/o/%.S.o,$(DYNAREC_ASM))
 PS2_OBJS := $(patsubst %,$(OUT)/o/%.o,$(PS2_CXX)) $(patsubst %,$(OUT)/o/%.c.o,$(PS2_C))
 OBJS     := $(UP_OBJS) $(PS2_OBJS) $(patsubst %,$(OUT)/zlib/%.o,$(ZLIB_C))
 
@@ -97,6 +106,9 @@ CXXDEPS  := $(LIBCXX_A) $(HERE)/Makefile
 $(OUT)/o/%.o: $(S)/%.cpp $(CXXDEPS)
 	@mkdir -p $(dir $@)
 	$(CXX) $(DCXXFLAGS) -I$(ZLIB_SRC) -c $< -o $@
+$(OUT)/o/%.S.o: $(S)/%.S $(HERE)/Makefile
+	@mkdir -p $(dir $@)
+	$(CC) $(TARGETF) -c $< -o $@
 $(OUT)/o/%.c.o: $(S)/%.c $(PICOLIBC_A)
 	@mkdir -p $(dir $@)
 	$(CC) $(DCFLAGS) -c $< -o $@
