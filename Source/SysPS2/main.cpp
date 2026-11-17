@@ -88,8 +88,8 @@ namespace
 // generated code (not the program's text)
 namespace
 {
-	MX_CORE_DATA volatile u32	gWatchEpc;
-	MX_CORE_FN void WatchTick( void * ) { gWatchEpc = mx_timer_epc(); }
+	MX_IRQ_DATA volatile u32	gWatchEpc;
+	MX_IRQ_FN void WatchTick( void * ) { gWatchEpc = mx_timer_epc(); }
 
 	void WatchThread( void * )
 	{

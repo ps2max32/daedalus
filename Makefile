@@ -22,7 +22,7 @@ all: $(OUT)/daedalus.elf
 MXGL     ?= $(PS2MAX)/libs/libgl
 include $(MXGL)/mk/mxgl.mk
 include $(MAXSDK)/mk/maxsdk.mk
-MX_CORE_OBJS = $(MXGL_OBJS)
+MX_FAST_OBJS = $(MXGL_OBJS)
 
 LLVM_SRC ?= $(PS2MAX_LLVM_SRC)
 PICOLIBC_SRC ?= $(PS2MAX)/libs/picolibc
