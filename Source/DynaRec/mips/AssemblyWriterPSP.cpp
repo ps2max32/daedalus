@@ -926,8 +926,19 @@ void	CAssemblyWriterPSP::MUL_S( EPspFloatReg fd, EPspFloatReg fs, EPspFloatReg f
 
 //
 
+#ifdef DAEDALUS_PS2
+// The EE's FPU divider (DIV.S, SQRT.S, RSQRT.S) may give a wrong result as
+// the first two instructions at a branch target, in a branch delay slot or
+// the two instructions after it, or right after SYNC.P (Restrictions manual,
+// EE (10)). Three NOPs first put it clear of all of them wherever it lands.
+static inline void FdivGap( CAssemblyWriterPSP * w )	{ w->NOP(); w->NOP(); w->NOP(); }
+#endif
+
 void	CAssemblyWriterPSP::DIV_S( EPspFloatReg fd, EPspFloatReg fs, EPspFloatReg ft )
 {
+#ifdef DAEDALUS_PS2
+	FdivGap( this );
+#endif
 	Cop1Op( Cop1Op_SInstr, fd, fs, Cop1OpFunc_DIV, ft );
 }
 
@@ -936,6 +947,9 @@ void	CAssemblyWriterPSP::DIV_S( EPspFloatReg fd, EPspFloatReg fs, EPspFloatReg f
 
 void	CAssemblyWriterPSP::SQRT_S( EPspFloatReg fd, EPspFloatReg fs )
 {
+#ifdef DAEDALUS_PS2
+	FdivGap( this );
+#endif
 	Cop1Op( Cop1Op_SInstr, fd, fs, Cop1OpFunc_SQRT );
 }
 

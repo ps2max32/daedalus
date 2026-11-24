@@ -49,7 +49,7 @@ LIB_FLAGS := $(TARGETF) -nostdlibinc $(SYSINC) -ffunction-sections -fdata-sectio
 
 OPT      ?= -O2
 # the options upstream's CMake gives a PSP build, without the PSP's hardware
-# (Media Engine, VFPU) and with the dynarec off (phase 5)
+# (Media Engine, VFPU)
 # DYNAREC=1: the PSP's MIPS recompiler with the EE's changes (phase 5); 0: the interpreter
 DYNAREC  ?= 0
 # DAEDALUS_ACCURATE_CVT: float to int in the FCSR rounding mode (the EE cvt.w.s truncates)
