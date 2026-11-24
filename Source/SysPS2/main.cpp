@@ -59,11 +59,9 @@ extern "C" {
 #include <mx/vm.h>
 }
 
-// virtual memory from the start (the ROM's window: up to 64 MiB, the largest
-// cartridge); the swap file is the shell's shared one
+// virtual memory from the start; the swap file is the shell's shared one
 extern "C" const struct mx_vm_config mx_vm_config = {
 	.swap = "swap.bin",
-	.map_size = 64u << 20,
 	.clean_frames = 32,
 };
 
