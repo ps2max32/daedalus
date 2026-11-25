@@ -61,7 +61,6 @@ extern "C" {
 
 // virtual memory from the start; the swap file is the shell's shared one
 extern "C" const struct mx_vm_config mx_vm_config = {
-	.swap = "swap.bin",
 	.clean_frames = 32,
 };
 

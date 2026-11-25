@@ -13,9 +13,7 @@ MAXSDK   ?= $(PS2MAX)/libs/maxsdk
 MAXSDK_OUT ?= $(PS2MAX)/build/libs/maxsdk
 LIBOUT   := $(PS2MAX)/build/apps/daedalus
 # the emulator in virtual memory (the ROM is a file mapped into it), its code in core
-MX_MEMORY ?= vm
 MX_VM_TEXT ?= core
-MX_KERNEL ?= 1
 OUT      ?= $(LIBOUT)
 all: $(OUT)/daedalus.elf
 
